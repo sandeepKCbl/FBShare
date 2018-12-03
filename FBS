@@ -1,0 +1,155 @@
+
+import UIKit
+import EZSwiftExtensions
+
+import FBSDKLoginKit
+import FBSDKCoreKit
+/*
+SocialNetworkClass.shared.facebookLogin {
+            [weak self] (fbId, name, email, img , first , last, phone, fbToken) in
+            
+            guard let self = self else { return }
+            
+            let obj = SocialModel(id: fbId, type: .fb, name: name, firstName: first, lastName: last, email: email, imageUrl: img, phone: phone, fbToken: fbToken)
+
+            self.socialLogin(objSModel: obj)
+            
+        }
+        
+        
+        AppDelegate : :::
+            func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+        
+        FBSDKApplicationDelegate.sharedInstance().application(application, didFinishLaunchingWithOptions: launchOptions)
+}
+        
+        
+        func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -> Bool {
+        //Utility.functions.loader()
+        if FBSDKApplicationDelegate.sharedInstance().application(app, open: url, options: options) {
+            //            Utility.functions.loader()
+            return true
+        }
+        return true
+    }
+*/
+typealias SuccessBlock = (_ fbId: String?, _ name: String?, _ email: String?, _ img: String?, _ firstName: String?, _ lastName: String?, _ phone: String?, _ token: String?) -> ()
+
+struct SocialModel
+{
+    var id : String?
+
+    var type : SocialLoginType?
+
+    var name : String?
+    var firstName : String?
+    var lastName : String?
+    
+    var email : String?
+    
+    var imageUrl : String?
+    
+    var phone : String?
+    
+    var fbToken : String?
+
+    var socialLoginId:String{
+        var str = /email
+        if str.isEmpty {
+            str = /id
+        }
+        return str
+    }
+}
+
+struct RegisterModel
+{
+    var name: String?
+    
+    var code: String?
+    var phone: String?
+    
+    var email: String?
+
+    var thumb: String?
+    var original: String?
+    var otp: String?
+
+    init(name:String?, code:String?, phone:String?, email:String?, thumb:String?, original:String?, otp:String? = nil) {
+        self.name = name
+        self.code = code
+        self.phone = phone
+        self.email = email
+        self.thumb = thumb
+        self.original = original
+        self.otp = otp
+    }
+}
+
+class SocialNetworkClass: NSObject {
+    
+    static let shared = SocialNetworkClass()
+    var responseBack : SuccessBlock?
+    
+    //MARK: Facebook
+    func facebookLogin(responseBlock : @escaping SuccessBlock) {
+        responseBack = responseBlock
+        let fbLoginManager : FBSDKLoginManager = FBSDKLoginManager()
+        fbLoginManager.logOut()
+//        Utility.functions.removeLoader()
+        
+        fbLoginManager.logIn(withReadPermissions: ["email","public_profile"],
+                             from: ez.topMostVC,
+                             handler: {
+                                [weak self] (result, error) -> Void in
+            if (error == nil) {
+                if let fbloginresult = result {
+                    if(fbloginresult.isCancelled) {
+//                        Utility.functions.removeLoader()
+                    } else if(fbloginresult.grantedPermissions.contains("email")) {
+                        self?.handleFbResult()
+                    } else {
+                        self?.handleFbResult()
+                    }
+                } else {
+//                    Utility.functions.removeLoader()
+                }
+            }else{
+                
+//                Utility.functions.removeLoader()
+            }
+        })
+    }
+    
+    func handleFbResult()  {
+        if (FBSDKAccessToken.current() != nil) {
+            FBSDKGraphRequest.init(
+                graphPath: "me",
+                parameters: ["fields": "id, name,email,picture.width(300).height(300)  , first_name, last_name"]).start(
+                    completionHandler: {
+                        [weak self] (connection, result, error) in
+                        self?.hanleResponse(result:(result as AnyObject?))
+                })
+        } else {
+            //            Utility.functions.removeLoader()
+        }
+    }
+    
+    func hanleResponse(result : AnyObject?) {
+        if let dict = result as? Dictionary<String, AnyObject> {
+//            let response = JSON(dict)
+            let facebookId = dict["id"] as? String
+            let email = dict["email"] as? String
+            let name = dict["name"] as? String
+            let firstName = dict["first_name"] as? String
+            let lastName = dict["last_name"] as? String
+            let phone = dict["phone"] as? String
+            var imageUrl = (dict as NSDictionary).value(forKeyPath: "picture.data.url") as? String
+            imageUrl = "http://graph.facebook.com/" + /facebookId + "/picture?type=large" //changed for panel
+            self.responseBack?(facebookId, name,email, imageUrl, firstName, lastName, phone, FBSDKAccessToken.current()?.tokenString ?? "")
+            
+        } else {
+//            Utility.functions.removeLoader()
+        }
+    }
+}
